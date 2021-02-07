@@ -1,4 +1,6 @@
-# configurable parameters
+# Help script for passing through host device to VM. 
+
+# configure these parameters
 $VM = 'Win-VM' # name of VM
 $DeviceClass = 'Display'
 $DeviceFriendlyName = 'NVIDIA GeForce GTX 1660 Ti'
