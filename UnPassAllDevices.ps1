@@ -1,5 +1,6 @@
 # Help script for unpassing all assigned devices in VM returning them to host.
 # Only processes devices which are in a disabled state.
+# Status: WIP
 
 # configure these parameters
 $VM = 'Win-VM' # name of VM
