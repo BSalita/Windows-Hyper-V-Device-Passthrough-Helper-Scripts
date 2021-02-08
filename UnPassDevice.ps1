@@ -20,11 +20,13 @@ Write-Host "VMLowMemoryMappedIoSpace: $VMLowMemoryMappedIoSpace"
 Write-Host "VMHighMemoryMappedIoSpace: $VMHighMemoryMappedIoSpace"
 
 # get table of devices having class of $DeviceClass. autosize to prevent truncation of InstanceId
+Write-Host "`nList of $DeviceClass devices:"
 Get-PnpDevice -class $DeviceClass | ft -AutoSize
 
-Write-Host "Attempting to pass $DeviceFriendlyName"
+# select the friendly name of the device you want to pass
+Write-Host "Attempting to unpass $DeviceFriendlyName"
 
-# get InstanceId of $DeviceFriendlyName
+# get InstanceId of device
 $DeviceInstanceId = (Get-PnpDevice -FriendlyName $DeviceFriendlyName).InstanceId
 Write-Host "`n$DeviceFriendlyName has InstanceId of $DeviceInstanceId"
 
@@ -32,45 +34,55 @@ Write-Host "`n$DeviceFriendlyName has InstanceId of $DeviceInstanceId"
 $DeviceId = $DeviceInstanceId.split('&')[0]
 Write-Host "`n$DeviceFriendlyName has Device ID of $DeviceId"
 
-# get all devices that start with DeviceId. Were assuming they form an IOMMU group and must be grouped.
-$DeviceGroup = Get-PnpDevice | where {$_.InstanceId.startswith($DeviceId) }
-Write-Host "`nList of devices in group $DeviceId"
+# Devices already assigned to VM
+Write-Host "`nList of all devices assigned to $VM"
+$AssignableDevices = Get-VMAssignableDevice -VMName $VM
+$AssignableDevices | ft -autosize
+
+# get all devices that start with DeviceId
+Write-Host "`nList of all $DeviceClass devices in group ${DeviceId}:"
+$DeviceGroup = Get-PnpDevice | Where-Object {$_.InstanceId.startswith($DeviceId) }
 $DeviceGroup | ft -autosize
 
+# Only need to release devices with status of OK from host
+Write-Host "List of transferable devices in group ${DeviceId}:"
+$DeviceGroup = $DeviceGroup | Where-Object {$_.Status -EQ 'Unknown' -And $_.InstanceId.Insert(3,'P') -in $AssignableDevices.InstanceId }
+$DeviceGroup | ft -autosize
+
+if ($DeviceGroup.count -EQ 0)
+{
+	Write-Host "`nNo transferable devices available. Exiting."
+	Exit
+}
+
+Write-Host "List of InstanceIDs of group:"
 $DeviceGroupInstanceIds = $DeviceGroup.InstanceId
-Write-Host "InstanceIDs of device group: $DeviceGroupInstanceIds`n"
+$DeviceGroupInstanceIds
 
-$DeviceLocationPaths = (Get-PnpDeviceProperty -KeyName DEVPKEY_Device_LocationPaths -InstanceId $DeviceGroupInstanceIds).Data
-Write-Host "LocationPaths of device group: $DeviceLocationPaths`n"
+Write-Host "`nList LocationPaths of group:"
+$DeviceLocationPaths = $DeviceGroupInstanceIds | ForEach-Object { Get-PnpDeviceProperty -KeyName DEVPKEY_Device_LocationPaths -InstanceId $_ } | Select InstanceId, Data
+$DeviceLocationPaths | ft -autosize
 
-# View connected device
-Write-Host "List of devices assigned to $VM"
-Get-VMAssignableDevice -VMName $VM
+if ($DeviceGroupInstanceIds.count -NE $DeviceLocationPaths.count)
+{
+	Write-Error "`nCount of InstanceIDs doesn't match count of LocationPaths. Exiting."
+	Exit
+}
+
+# Only want PCIROOT devices
+Write-Host "List of LocationPaths of PCIROOT of group:"
+$DeviceLocationPaths = $DeviceLocationPaths.Data | Where-Object {$_.startswith('PCIROOT')} | Get-Unique
+$DeviceLocationPaths
 
 # Remove device from VM
 Write-Host "`nRemoving devices from $VM"
-$DeviceLocationPaths | foreach { Start-Sleep -Seconds 1 | Remove-VMAssignableDevice -VMName $VM -LocationPath $_ }
+$DeviceLocationPaths | foreach { Remove-VMAssignableDevice -VMName $VM -LocationPath $_ }
 
 # Remount device to Host
 Write-Host "`nMounting devices to host"
-$DeviceLocationPaths | foreach { Start-Sleep -Seconds 1 | Mount-VMHostAssignableDevice -LocationPath $_ }
-Start-Sleep -Seconds 1
+$DeviceLocationPaths | foreach { Mount-VMHostAssignableDevice -LocationPath $_ }
 
 # enable all devices in group
-Write-Host "`nEnabling devices on host: $DeviceGroupInstanceIds"
+Write-Host "`nEnabling devices on host:"
+$DeviceGroupInstanceIds
 Enable-PnpDevice -InstanceId $DeviceGroupInstanceIds -Confirm:$false
-Start-Sleep -Seconds 1
-
-# Alternative implementations using all devices intstead of individual items
-
-# Remove all devices from a single VM
-# Remove-VMAssignableDevice -VMName $VM -Verbose
-# Start-Sleep -Seconds 1
-
-# Return all to host
-# Get-VMHostAssignableDevice | Mount-VmHostAssignableDevice -Verbose
-# Start-Sleep -Seconds 1
-
-# Enable it in devmgmt.msc
-# Get-PnpDevice -PresentOnly | Enable-PnpDevice -Confirm:$false -Verbose
-# Start-Sleep -Seconds 1
