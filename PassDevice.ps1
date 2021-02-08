@@ -1,4 +1,5 @@
-# Help script for passing through host device to VM. 
+# Helper script for passing through host device to VM. 
+# Status WIP
 
 # configure these parameters
 $VM = 'Win-VM' # name of VM
