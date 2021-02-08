@@ -1,4 +1,5 @@
-# Help script for unpassing device currently assigned to VM returning device to host.
+# Helper script for unpassing device currently assigned to VM returning device to host.
+# Status: WIP
 
 # configure these parameters
 $VM = 'Win-VM' # name of VM
