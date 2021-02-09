@@ -98,6 +98,9 @@ $DeviceInfDirs
 # TODO: Write host directories directly into VM (untested)
 # Copy-VMFile $VM -SourcePath "C:\WINDOWS\System32\DriverStore\FileRepository" -DestinationPath "C:\WINDOWS\System32\HostDriverStore\FileRepository" -CreateFullPath -FileSource Host
 
+# TODO: Write host files directly into VM (untested)
+# Copy-VMFile $VM -SourcePath "C:\WINDOWS\System32\nvidia-smi.exe" -DestinationPath "C:\WINDOWS\System32\nvidia-smi.exe" -CreateFullPath -FileSource Host
+
 Write-Host "`nSet StaticMemory, set MemoryStartupBytes to size, set AutomaticStopAction to TurnOff"
 Set-VM -name $vm -StaticMemory -MemoryStartupBytes $VMMemoryStartupBytes -AutomaticStopAction $VMAutomaticStopAction
 
