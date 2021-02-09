@@ -95,6 +95,9 @@ Write-Host "`nList of directories:"
 $DeviceInfDirs = $DeviceDllPaths | ForEach-Object {($_.split('\\') | Select -first 6) -Join '\'} | Get-Unique
 $DeviceInfDirs
 
+# TODO: Write host directories directly into VM (untested)
+# Copy-VMFile $VM -SourcePath "C:\WINDOWS\System32\DriverStore\FileRepository" -DestinationPath "C:\WINDOWS\System32\HostDriverStore\FileRepository" -CreateFullPath -FileSource Host
+
 Write-Host "`nSet StaticMemory, set MemoryStartupBytes to size, set AutomaticStopAction to TurnOff"
 Set-VM -name $vm -StaticMemory -MemoryStartupBytes $VMMemoryStartupBytes -AutomaticStopAction $VMAutomaticStopAction
 
